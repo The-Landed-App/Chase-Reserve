@@ -341,6 +341,65 @@
   }
   .modal-btns .save:hover { background: var(--navy-mid); }
 
+  /* SPEND TRACKER */
+  .spend-card {
+    background: var(--navy);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    margin-bottom: 32px;
+    position: relative;
+    overflow: hidden;
+  }
+  .spend-card::before {
+    content: '';
+    position: absolute;
+    top: -40px; right: -40px;
+    width: 160px; height: 160px;
+    border-radius: 50%;
+    background: rgba(200,169,110,0.06);
+  }
+  .spend-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 4px; gap: 12px; flex-wrap: wrap; }
+  .spend-title { font-family: 'DM Serif Display', serif; font-size: 18px; color: var(--cream); }
+  .spend-subtitle { font-size: 12px; color: rgba(247,243,236,0.5); margin-bottom: 16px; }
+  .spend-numbers { display: flex; align-items: baseline; gap: 8px; margin-bottom: 14px; }
+  .spend-current { font-family: 'DM Serif Display', serif; font-size: 36px; color: var(--gold-light); line-height: 1; }
+  .spend-of { font-size: 14px; color: rgba(247,243,236,0.4); }
+  .spend-target { font-family: 'DM Serif Display', serif; font-size: 22px; color: rgba(247,243,236,0.5); }
+  .spend-bar-track { height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden; margin-bottom: 10px; }
+  .spend-bar-fill { height: 100%; background: linear-gradient(90deg, var(--gold-dim), var(--gold-light)); border-radius: 3px; transition: width 0.5s cubic-bezier(.4,0,.2,1); }
+  .spend-bar-fill.complete { background: linear-gradient(90deg, #2d6a4f, #6ee09c); }
+  .spend-meta { display: flex; align-items: center; justify-content: space-between; }
+  .spend-remaining { font-size: 12px; color: rgba(247,243,236,0.5); }
+  .spend-remaining strong { color: var(--gold); }
+  .spend-edit-btn {
+    font-size: 12px; padding: 6px 16px;
+    border: 1px solid rgba(200,169,110,0.4);
+    border-radius: 20px; background: transparent;
+    color: var(--gold); cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .spend-edit-btn:hover { background: rgba(200,169,110,0.1); border-color: var(--gold); }
+  .spend-bonus { display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+  .spend-bonus.earned { background: rgba(45,106,79,0.3); color: #6ee09c; }
+  .spend-bonus.pending { background: rgba(200,169,110,0.15); color: var(--gold); }
+
+  /* SPEND MODAL */
+  .spend-input-wrap { margin-bottom: 20px; }
+  .spend-input {
+    width: 100%;
+    font-family: 'DM Serif Display', serif;
+    font-size: 32px;
+    color: var(--navy);
+    border: none;
+    border-bottom: 2px solid var(--cream-dim);
+    background: transparent;
+    padding: 4px 0;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .spend-input:focus { border-bottom-color: var(--gold); }
+
   @media (max-width: 600px) {
     .metric-value { font-size: 22px; }
     .benefits-grid { grid-template-columns: 1fr; }
@@ -387,6 +446,32 @@
     </div>
   </div>
 
+  <!-- WELCOME BONUS SPEND TRACKER -->
+  <div class="section-head">
+    <h2>Welcome bonus</h2>
+  </div>
+  <div class="spend-card">
+    <div class="spend-header">
+      <div>
+        <div class="spend-title">🎯 $6,000 Spend Challenge</div>
+        <div class="spend-subtitle">Earn 150,000 bonus points (worth ~$2,250 in travel) · Must complete within 3 months of opening</div>
+      </div>
+      <button class="spend-edit-btn" onclick="openSpendModal()">Update spend</button>
+    </div>
+    <div class="spend-numbers">
+      <div class="spend-current" id="spend-current">$0</div>
+      <div class="spend-of">of</div>
+      <div class="spend-target">$6,000</div>
+    </div>
+    <div class="spend-bar-track">
+      <div class="spend-bar-fill" id="spend-bar" style="width:0%"></div>
+    </div>
+    <div class="spend-meta">
+      <div class="spend-remaining" id="spend-remaining"><strong>$6,000</strong> remaining to unlock bonus</div>
+    </div>
+    <div id="spend-bonus-badge"></div>
+  </div>
+
   <!-- STATEMENT CREDITS -->
   <div class="section-head">
     <h2>Statement credits</h2>
@@ -407,6 +492,22 @@
   </div>
 
 </main>
+
+<!-- SPEND MODAL -->
+<div class="overlay" id="spend-overlay">
+  <div class="modal">
+    <div class="modal-name">🎯 Welcome Bonus Spend</div>
+    <div class="modal-desc">Enter the total amount you've spent on the card so far. This tracks progress toward the $6,000 requirement for the 60,000 bonus points.</div>
+    <div class="modal-label">Total spent so far</div>
+    <div class="spend-input-wrap">
+      <input type="number" class="spend-input" id="spend-input" min="0" max="6000" placeholder="0" />
+    </div>
+    <div class="modal-btns">
+      <button onclick="closeSpendModal()">Cancel</button>
+      <button class="save" onclick="saveSpendModal()">Save</button>
+    </div>
+  </div>
+</div>
 
 <!-- MODAL -->
 <div class="overlay" id="overlay">
@@ -454,6 +555,7 @@ const PERKS = [
 // State
 let benefits = BENEFITS.map(b => ({ ...b, used: 0 }));
 let perks = PERKS.map((p, i) => ({ ...p, id: i }));
+let spendAmount = 0;
 let editingId = null;
 let syncing = false;
 
@@ -461,9 +563,10 @@ let syncing = false;
 async function loadFromDB() {
   setSyncStatus('syncing', 'Loading…');
   try {
-    const [{ data: bData }, { data: pData }] = await Promise.all([
+    const [{ data: bData }, { data: pData }, { data: sData }] = await Promise.all([
       sb.from('csr_benefits').select('id, used'),
       sb.from('csr_perks').select('id, activated'),
+      sb.from('csr_spend').select('amount').eq('id', 'welcome_bonus').single(),
     ]);
     if (bData) bData.forEach(row => {
       const b = benefits.find(x => x.id === row.id);
@@ -473,6 +576,7 @@ async function loadFromDB() {
       const p = perks.find(x => x.id === row.id);
       if (p) p.activated = row.activated;
     });
+    if (sData) spendAmount = sData.amount || 0;
     setSyncStatus('synced', 'Synced');
   } catch(e) {
     setSyncStatus('error', 'Offline');
@@ -502,6 +606,17 @@ async function savePerk(id, activated) {
   }
 }
 
+async function saveSpend(amount) {
+  setSyncStatus('syncing', 'Saving…');
+  try {
+    await sb.from('csr_spend').upsert({ id: 'welcome_bonus', amount, updated_at: new Date().toISOString() });
+    setSyncStatus('synced', 'Saved ✓');
+    setTimeout(() => setSyncStatus('synced', 'Synced'), 1500);
+  } catch(e) {
+    setSyncStatus('error', 'Save failed');
+  }
+}
+
 function setSyncStatus(state, label) {
   const el = document.getElementById('sync-status');
   el.className = 'sync-status ' + state;
@@ -512,8 +627,25 @@ function setSyncStatus(state, label) {
 function render() {
   renderMetrics();
   renderFeeBar();
+  renderSpend();
   renderBenefits();
   renderPerks();
+}
+
+function renderSpend() {
+  const pct = Math.min(100, Math.round(spendAmount / 6000 * 100));
+  const remaining = Math.max(0, 6000 - spendAmount);
+  const complete = spendAmount >= 6000;
+  document.getElementById('spend-current').textContent = '$' + spendAmount.toLocaleString();
+  const bar = document.getElementById('spend-bar');
+  bar.style.width = pct + '%';
+  bar.className = 'spend-bar-fill' + (complete ? ' complete' : '');
+  document.getElementById('spend-remaining').innerHTML = complete
+    ? '<strong style="color:#6ee09c">Requirement met!</strong>'
+    : `<strong>$${remaining.toLocaleString()}</strong> remaining to unlock bonus`;
+  document.getElementById('spend-bonus-badge').innerHTML = complete
+    ? `<span class="spend-bonus earned">✓ 150,000 bonus points earned (~$2,250 in travel)</span>`
+    : `<span class="spend-bonus pending">⏳ ${pct}% complete · 150,000 pts pending</span>`;
 }
 
 function renderMetrics() {
@@ -596,6 +728,29 @@ function renderPerks() {
     </div>
   `).join('');
 }
+
+// Spend modal
+function openSpendModal() {
+  document.getElementById('spend-input').value = spendAmount || '';
+  document.getElementById('spend-overlay').classList.add('open');
+  setTimeout(() => document.getElementById('spend-input').focus(), 50);
+}
+
+async function saveSpendModal() {
+  const val = Math.min(6000, Math.max(0, parseInt(document.getElementById('spend-input').value) || 0));
+  spendAmount = val;
+  closeSpendModal();
+  renderSpend();
+  await saveSpend(val);
+}
+
+function closeSpendModal() {
+  document.getElementById('spend-overlay').classList.remove('open');
+}
+
+document.getElementById('spend-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('spend-overlay')) closeSpendModal();
+});
 
 // Modal
 function openModal(id) {
