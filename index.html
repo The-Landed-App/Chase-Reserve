@@ -357,6 +357,7 @@
     width: 160px; height: 160px;
     border-radius: 50%;
     background: rgba(200,169,110,0.06);
+    pointer-events: none;
   }
   .spend-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 4px; gap: 12px; flex-wrap: wrap; }
   .spend-title { font-family: 'DM Serif Display', serif; font-size: 18px; color: var(--cream); }
@@ -378,6 +379,8 @@
     color: var(--gold); cursor: pointer;
     font-family: 'DM Sans', sans-serif;
     transition: background 0.15s, border-color 0.15s;
+    position: relative;
+    z-index: 2;
   }
   .spend-edit-btn:hover { background: rgba(200,169,110,0.1); border-color: var(--gold); }
   .spend-bonus { display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; }
