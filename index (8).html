@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Chase Sapphire Reserve · Benefits Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --navy: #0a1628;
+    --navy-mid: #142244;
+    --navy-light: #1e3260;
+    --gold: #c8a96e;
+    --gold-light: #e8cfa0;
+    --gold-dim: #8a6f3f;
+    --cream: #f7f3ec;
+    --cream-dim: #ede6d8;
+    --text: #1a1208;
+    --text-mid: #4a3f28;
+    --text-muted: #7a6e58;
+    --green: #2d6a4f;
+    --green-bg: #d8f3dc;
+    --amber: #92581a;
+    --amber-bg: #fdebd0;
+    --red: #842029;
+    --red-bg: #f8d7da;
+    --card-bg: #ffffff;
+    --border: rgba(10,22,40,0.1);
+    --radius: 12px;
+    --shadow: 0 2px 12px rgba(10,22,40,0.08);
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--cream);
+    color: var(--text);
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  /* HEADER */
+  .site-header {
+    background: var(--navy);
+    padding: 0 24px;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    border-bottom: 1px solid var(--navy-light);
+  }
+  .header-inner {
+    max-width: 900px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+    gap: 12px;
+  }
+  .header-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .card-chip {
+    width: 32px;
+    height: 22px;
+    background: linear-gradient(135deg, var(--gold) 0%, var(--gold-light) 50%, var(--gold-dim) 100%);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .card-chip svg { width: 18px; height: 18px; opacity: 0.6; }
+  .header-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 16px;
+    color: var(--cream);
+    letter-spacing: 0.01em;
+    line-height: 1.2;
+  }
+  .header-title span {
+    display: block;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 10px;
+    font-weight: 300;
+    color: var(--gold);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .sync-status {
+    font-size: 11px;
+    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.3s;
+  }
+  .sync-status.synced { background: rgba(45,106,79,0.25); color: #6ee09c; }
+  .sync-status.syncing { background: rgba(200,169,110,0.2); color: var(--gold); }
+  .sync-status.error { background: rgba(132,32,41,0.25); color: #f5a0a5; }
+  .sync-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+  .sync-status.syncing .sync-dot {
+    animation: pulse 1s infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+  /* LAYOUT */
+  .main { max-width: 900px; margin: 0 auto; padding: 28px 16px 60px; }
+
+  /* METRICS ROW */
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 32px; }
+  .metric {
+    background: var(--navy);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .metric::after {
+    content: '';
+    position: absolute;
+    top: -20px; right: -20px;
+    width: 80px; height: 80px;
+    border-radius: 50%;
+    background: rgba(200,169,110,0.07);
+  }
+  .metric-label { font-size: 11px; font-weight: 500; color: var(--gold); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px; }
+  .metric-value { font-family: 'DM Serif Display', serif; font-size: 26px; color: var(--cream); line-height: 1; }
+  .metric-value.positive { color: #6ee09c; }
+  .metric-value.negative { color: #f5a0a5; }
+  .metric-sub { font-size: 11px; color: rgba(247,243,236,0.45); margin-top: 4px; }
+
+  /* PROGRESS BAR */
+  .fee-bar-wrap { margin-bottom: 32px; }
+  .fee-bar-label { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
+  .fee-bar-label strong { color: var(--text-mid); }
+  .fee-bar-track {
+    height: 8px;
+    background: var(--cream-dim);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .fee-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--gold-dim), var(--gold));
+    border-radius: 4px;
+    transition: width 0.5s cubic-bezier(.4,0,.2,1);
+    position: relative;
+  }
+  .fee-bar-fill.broken {
+    background: linear-gradient(90deg, #2d6a4f, #40916c);
+  }
+  .fee-line {
+    position: relative;
+    height: 0;
+    margin-top: -8px;
+  }
+  .fee-marker {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transform: translateX(-50%);
+    pointer-events: none;
+  }
+  .fee-marker-line { width: 1px; height: 12px; background: var(--text-muted); }
+  .fee-marker-label { font-size: 10px; color: var(--text-muted); margin-top: 2px; white-space: nowrap; }
+
+  /* SECTIONS */
+  .section-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .section-head h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 18px;
+    color: var(--navy);
+    font-weight: 400;
+  }
+  .section-head .pill {
+    font-size: 11px;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 20px;
+    background: var(--cream-dim);
+    color: var(--text-muted);
+  }
+
+  /* BENEFIT CARDS */
+  .benefits-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin-bottom: 32px; }
+  .b-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    cursor: pointer;
+    transition: box-shadow 0.2s, transform 0.15s;
+    position: relative;
+    overflow: hidden;
+  }
+  .b-card:hover { box-shadow: var(--shadow); transform: translateY(-1px); }
+  .b-card.is-full { border-left: 3px solid var(--green); }
+  .b-card.is-partial { border-left: 3px solid var(--gold); }
+  .b-card.is-empty { border-left: 3px solid var(--cream-dim); }
+  .b-card-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 6px; gap: 8px; }
+  .b-card-name { font-weight: 500; font-size: 14px; color: var(--text); }
+  .b-card-amount { font-family: 'DM Serif Display', serif; font-size: 18px; color: var(--navy); white-space: nowrap; }
+  .b-card-period { font-size: 11px; color: var(--text-muted); margin-bottom: 8px; }
+  .b-card-desc { font-size: 12px; color: var(--text-muted); line-height: 1.5; margin-bottom: 10px; }
+  .b-progress { height: 4px; background: var(--cream-dim); border-radius: 2px; overflow: hidden; margin-bottom: 8px; }
+  .b-progress-fill { height: 100%; border-radius: 2px; transition: width 0.4s cubic-bezier(.4,0,.2,1); }
+  .b-progress-fill.full { background: var(--green); }
+  .b-progress-fill.partial { background: var(--gold); }
+  .b-progress-fill.empty { background: var(--cream-dim); width: 0 !important; }
+  .b-card-footer { display: flex; align-items: center; justify-content: space-between; }
+  .b-used-text { font-size: 11px; color: var(--text-muted); }
+  .b-edit-btn {
+    font-size: 11px;
+    padding: 4px 12px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    background: transparent;
+    color: var(--text-mid);
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .b-edit-btn:hover { background: var(--cream); border-color: var(--gold-dim); }
+
+  /* PERKS */
+  .perks-table {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 32px;
+  }
+  .perk-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+  }
+  .perk-row:last-child { border-bottom: none; }
+  .perk-row:hover { background: var(--cream); }
+  .perk-icon {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    font-size: 18px;
+  }
+  .perk-icon.navy { background: var(--navy); }
+  .perk-icon.gold { background: rgba(200,169,110,0.15); }
+  .perk-info { flex: 1; min-width: 0; }
+  .perk-name { font-size: 13px; font-weight: 500; color: var(--text); }
+  .perk-detail { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+  .perk-badge {
+    font-size: 11px; font-weight: 500;
+    padding: 3px 10px; border-radius: 20px;
+    white-space: nowrap; flex-shrink: 0;
+  }
+  .perk-badge.active { background: var(--green-bg); color: var(--green); }
+  .perk-badge.todo { background: var(--amber-bg); color: var(--amber); }
+  .perk-activate {
+    font-size: 11px; padding: 4px 12px;
+    border: 1px solid var(--border); border-radius: 20px;
+    background: transparent; color: var(--text-mid);
+    cursor: pointer; font-family: 'DM Sans', sans-serif;
+    transition: background 0.15s;
+    flex-shrink: 0;
+  }
+  .perk-activate:hover { background: var(--cream-dim); }
+
+  /* TIP */
+  .tip {
+    background: rgba(200,169,110,0.1);
+    border: 1px solid rgba(200,169,110,0.3);
+    border-radius: var(--radius);
+    padding: 14px 18px;
+    font-size: 13px;
+    color: var(--text-mid);
+    line-height: 1.6;
+  }
+  .tip strong { color: var(--amber); }
+
+  /* MODAL */
+  .overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(10,22,40,0.55);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    backdrop-filter: blur(2px);
+  }
+  .overlay.open { display: flex; }
+  .modal {
+    background: var(--card-bg);
+    border-radius: 16px;
+    padding: 24px;
+    width: 100%;
+    max-width: 360px;
+    box-shadow: 0 20px 60px rgba(10,22,40,0.3);
+  }
+  .modal-name { font-family: 'DM Serif Display', serif; font-size: 20px; color: var(--navy); margin-bottom: 4px; }
+  .modal-desc { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.5; }
+  .modal-label { font-size: 12px; font-weight: 500; color: var(--text-mid); margin-bottom: 6px; }
+  .modal-slider { width: 100%; accent-color: var(--gold); margin-bottom: 4px; }
+  .modal-amount { font-family: 'DM Serif Display', serif; font-size: 32px; color: var(--navy); margin-bottom: 20px; }
+  .modal-btns { display: flex; gap: 8px; justify-content: flex-end; }
+  .modal-btns button {
+    font-size: 13px; padding: 8px 20px;
+    border-radius: 20px; cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    border: 1px solid var(--border);
+    background: transparent; color: var(--text);
+    transition: background 0.15s;
+  }
+  .modal-btns button:hover { background: var(--cream); }
+  .modal-btns .save {
+    background: var(--navy); color: var(--cream);
+    border-color: var(--navy);
+  }
+  .modal-btns .save:hover { background: var(--navy-mid); }
+
+  @media (max-width: 600px) {
+    .metric-value { font-size: 22px; }
+    .benefits-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="header-inner">
+    <div class="header-brand">
+      <div class="card-chip">
+        <svg viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="1" y="4" width="16" height="10" rx="1.5" fill="rgba(10,22,40,0.4)"/>
+          <rect x="1" y="7" width="16" height="2.5" fill="rgba(10,22,40,0.3)"/>
+          <rect x="3" y="10" width="4" height="1.5" rx="0.5" fill="rgba(10,22,40,0.4)"/>
+        </svg>
+      </div>
+      <div class="header-title">
+        Sapphire Reserve
+        <span>Benefits Dashboard</span>
+      </div>
+    </div>
+    <div class="sync-status syncing" id="sync-status">
+      <div class="sync-dot"></div>
+      <span id="sync-label">Connecting…</span>
+    </div>
+  </div>
+</header>
+
+<main class="main">
+
+  <!-- METRICS -->
+  <div class="metrics" id="metrics"></div>
+
+  <!-- PROGRESS BAR -->
+  <div class="fee-bar-wrap">
+    <div class="fee-bar-label">
+      <span>Credits used toward $795 annual fee</span>
+      <strong id="bar-pct">0%</strong>
+    </div>
+    <div class="fee-bar-track">
+      <div class="fee-bar-fill" id="fee-bar" style="width:0%"></div>
+    </div>
+  </div>
+
+  <!-- STATEMENT CREDITS -->
+  <div class="section-head">
+    <h2>Statement credits</h2>
+    <span class="pill" id="credits-pill">$0 of $1,490 used</span>
+  </div>
+  <div class="benefits-grid" id="benefits-grid"></div>
+
+  <!-- PERKS -->
+  <div class="section-head">
+    <h2>Always-on perks</h2>
+  </div>
+  <div class="perks-table" id="perks-table"></div>
+
+  <!-- TIP -->
+  <div class="tip">
+    <strong>⚡ Tip:</strong> Several credits reset biannually on <strong>June 30</strong> and <strong>December 31</strong>.
+    Don't let H1 credits expire unused — The Edit, Dining, and StubHub each split $150–$250 per half.
+  </div>
+
+</main>
+
+<!-- MODAL -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="modal-name" id="modal-name"></div>
+    <div class="modal-desc" id="modal-desc"></div>
+    <div class="modal-label">Amount used</div>
+    <input type="range" class="modal-slider" id="modal-slider" min="0" step="1" value="0" />
+    <div class="modal-amount" id="modal-amount">$0</div>
+    <div class="modal-btns">
+      <button onclick="closeModal()">Cancel</button>
+      <button class="save" onclick="saveModal()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://hktthikkwctedekqlimf.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_NN0A0AqiYl2pIH0ZYyvmgQ_JP2OV-Km';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const BENEFITS = [
+  { id: 'travel',      name: '$300 Travel credit',      amount: 300, period: 'Annual — resets each calendar year', desc: 'Applies automatically to virtually any travel purchase: flights, hotels, Uber, Lyft, tolls, parking, and more.', emoji: '✈️' },
+  { id: 'edit_h1',     name: 'The Edit hotel (H1)',      amount: 250, period: 'Jan 1 – Jun 30', desc: 'Prepaid 2+ night stay at a luxury hotel booked through The Edit by Chase Travel.', emoji: '🏨' },
+  { id: 'edit_h2',     name: 'The Edit hotel (H2)',      amount: 250, period: 'Jul 1 – Dec 31', desc: 'Prepaid 2+ night stay at a luxury hotel booked through The Edit by Chase Travel.', emoji: '🏨' },
+  { id: 'dining_h1',   name: 'Exclusive Tables (H1)',    amount: 150, period: 'Jan 1 – Jun 30', desc: 'Sapphire Reserve Exclusive Tables restaurants in NYC, LA, Chicago, and other major cities.', emoji: '🍽️' },
+  { id: 'dining_h2',   name: 'Exclusive Tables (H2)',    amount: 150, period: 'Jul 1 – Dec 31', desc: 'Sapphire Reserve Exclusive Tables restaurants in NYC, LA, Chicago, and other major cities.', emoji: '🍽️' },
+  { id: 'stubhub_h1',  name: 'StubHub / Viagogo (H1)',   amount: 150, period: 'Jan 1 – Jun 30', desc: 'Concerts, games, and live events purchased through StubHub or Viagogo.', emoji: '🎟️' },
+  { id: 'stubhub_h2',  name: 'StubHub / Viagogo (H2)',   amount: 150, period: 'Jul 1 – Dec 31', desc: 'Concerts, games, and live events purchased through StubHub or Viagogo.', emoji: '🎟️' },
+  { id: 'peloton',     name: 'Peloton membership',       amount: 120, period: 'Annual ($10/mo through Dec 2027)', desc: '$10/month statement credit for Peloton All-Access or App membership. Also earns 10x points on Peloton hardware.', emoji: '🚴' },
+  { id: 'lyft',        name: 'Lyft credit',              amount: 120, period: 'Annual ($10/mo)', desc: '$10/month credit when your Lyft account is linked. Also earns 5x Ultimate Rewards on all Lyft rides.', emoji: '🚗' },
+  { id: 'gentry',      name: 'Global Entry / TSA Pre✓', amount: 120, period: 'Every 4 years', desc: 'Statement credit when you pay the application fee for Global Entry ($120) or TSA PreCheck ($85).', emoji: '🛂' },
+];
+
+const PERKS = [
+  { name: 'Priority Pass lounge access', detail: 'Unlimited visits + 2 guests free at 1,300+ lounges worldwide. Also covers Sapphire Lounges.', emoji: '🛋️', activated: true },
+  { name: 'Apple TV+ subscription', detail: 'Complimentary through June 2027. Activate separately at chase.com/benefits — cancel any paid plan first.', emoji: '📺', activated: false },
+  { name: 'Apple Music subscription', detail: 'Complimentary through June 2027. Activate separately from Apple TV+. Worth ~$120/yr.', emoji: '🎵', activated: false },
+  { name: 'DashPass + DoorDash credits', detail: 'Free DashPass membership through 2027 plus up to $25/month in DoorDash credits.', emoji: '🛵', activated: false },
+  { name: 'IHG Platinum Elite status', detail: 'Complimentary status through 2027. Enroll via chase.com/benefits to activate — unlocks upgrades and bonus points.', emoji: '👑', activated: false },
+  { name: 'Trip cancellation / interruption', detail: 'Up to $10,000/person, $20,000/trip when booked with your card. No activation needed.', emoji: '🛡️', activated: true },
+  { name: 'Primary rental car insurance', detail: 'Collision damage waiver — always decline the rental agency\'s CDW. Pay with your card to activate.', emoji: '🚙', activated: true },
+];
+
+// State
+let benefits = BENEFITS.map(b => ({ ...b, used: 0 }));
+let perks = PERKS.map((p, i) => ({ ...p, id: i }));
+let editingId = null;
+let syncing = false;
+
+// Supabase helpers
+async function loadFromDB() {
+  setSyncStatus('syncing', 'Loading…');
+  try {
+    const [{ data: bData }, { data: pData }] = await Promise.all([
+      sb.from('csr_benefits').select('id, used'),
+      sb.from('csr_perks').select('id, activated'),
+    ]);
+    if (bData) bData.forEach(row => {
+      const b = benefits.find(x => x.id === row.id);
+      if (b) b.used = row.used;
+    });
+    if (pData) pData.forEach(row => {
+      const p = perks.find(x => x.id === row.id);
+      if (p) p.activated = row.activated;
+    });
+    setSyncStatus('synced', 'Synced');
+  } catch(e) {
+    setSyncStatus('error', 'Offline');
+  }
+  render();
+}
+
+async function saveBenefit(id, used) {
+  setSyncStatus('syncing', 'Saving…');
+  try {
+    await sb.from('csr_benefits').upsert({ id, used, updated_at: new Date().toISOString() });
+    setSyncStatus('synced', 'Saved ✓');
+    setTimeout(() => setSyncStatus('synced', 'Synced'), 1500);
+  } catch(e) {
+    setSyncStatus('error', 'Save failed');
+  }
+}
+
+async function savePerk(id, activated) {
+  setSyncStatus('syncing', 'Saving…');
+  try {
+    await sb.from('csr_perks').upsert({ id, activated, updated_at: new Date().toISOString() });
+    setSyncStatus('synced', 'Saved ✓');
+    setTimeout(() => setSyncStatus('synced', 'Synced'), 1500);
+  } catch(e) {
+    setSyncStatus('error', 'Save failed');
+  }
+}
+
+function setSyncStatus(state, label) {
+  const el = document.getElementById('sync-status');
+  el.className = 'sync-status ' + state;
+  document.getElementById('sync-label').textContent = label;
+}
+
+// Render
+function render() {
+  renderMetrics();
+  renderFeeBar();
+  renderBenefits();
+  renderPerks();
+}
+
+function renderMetrics() {
+  const totalCredits = benefits.reduce((s, b) => s + b.amount, 0);
+  const totalUsed = benefits.reduce((s, b) => s + Math.min(b.used, b.amount), 0);
+  const remaining = totalCredits - totalUsed;
+  const net = totalUsed - 795;
+  document.getElementById('metrics').innerHTML = `
+    <div class="metric">
+      <div class="metric-label">Annual fee</div>
+      <div class="metric-value">$795</div>
+      <div class="metric-sub">Resets with card anniversary</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Credits available</div>
+      <div class="metric-value">$${totalCredits.toLocaleString()}</div>
+      <div class="metric-sub">Across 10 benefit categories</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Credits used</div>
+      <div class="metric-value">$${totalUsed.toLocaleString()}</div>
+      <div class="metric-sub">${Math.round(totalUsed / totalCredits * 100)}% of available</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Net card value</div>
+      <div class="metric-value ${net >= 0 ? 'positive' : 'negative'}">${net >= 0 ? '+' : ''}$${net.toLocaleString()}</div>
+      <div class="metric-sub">${net >= 0 ? 'Fee covered ✓' : '$' + Math.abs(net) + ' to break even'}</div>
+    </div>
+  `;
+}
+
+function renderFeeBar() {
+  const totalUsed = benefits.reduce((s, b) => s + Math.min(b.used, b.amount), 0);
+  const pct = Math.min(100, Math.round(totalUsed / 795 * 100));
+  const bar = document.getElementById('fee-bar');
+  bar.style.width = pct + '%';
+  bar.className = 'fee-bar-fill' + (pct >= 100 ? ' broken' : '');
+  document.getElementById('bar-pct').textContent = pct + '%';
+  const totalCredits = benefits.reduce((s, b) => s + b.amount, 0);
+  const totalUsedAll = benefits.reduce((s, b) => s + Math.min(b.used, b.amount), 0);
+  document.getElementById('credits-pill').textContent = `$${totalUsedAll.toLocaleString()} of $${totalCredits.toLocaleString()} used`;
+}
+
+function renderBenefits() {
+  document.getElementById('benefits-grid').innerHTML = benefits.map(b => {
+    const used = Math.min(b.used, b.amount);
+    const pct = Math.round(used / b.amount * 100);
+    const cls = used >= b.amount ? 'is-full' : used > 0 ? 'is-partial' : 'is-empty';
+    const fillCls = used >= b.amount ? 'full' : used > 0 ? 'partial' : 'empty';
+    return `
+      <div class="b-card ${cls}" onclick="openModal('${b.id}')">
+        <div class="b-card-header">
+          <div class="b-card-name">${b.emoji} ${b.name}</div>
+          <div class="b-card-amount">$${b.amount}</div>
+        </div>
+        <div class="b-card-period">${b.period}</div>
+        <div class="b-card-desc">${b.desc}</div>
+        <div class="b-progress"><div class="b-progress-fill ${fillCls}" style="width:${pct}%"></div></div>
+        <div class="b-card-footer">
+          <span class="b-used-text">$${used} used · $${b.amount - used} remaining</span>
+          <button class="b-edit-btn" onclick="event.stopPropagation();openModal('${b.id}')">Update</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderPerks() {
+  document.getElementById('perks-table').innerHTML = perks.map(p => `
+    <div class="perk-row">
+      <div class="perk-icon ${p.activated ? 'navy' : 'gold'}" style="font-size:18px;">${p.emoji}</div>
+      <div class="perk-info">
+        <div class="perk-name">${p.name}</div>
+        <div class="perk-detail">${p.detail}</div>
+      </div>
+      ${p.activated
+        ? `<span class="perk-badge active">Active</span>`
+        : `<button class="perk-activate" onclick="activatePerk(${p.id})">Activate</button>`
+      }
+    </div>
+  `).join('');
+}
+
+// Modal
+function openModal(id) {
+  const b = benefits.find(x => x.id === id);
+  editingId = id;
+  document.getElementById('modal-name').textContent = b.emoji + ' ' + b.name;
+  document.getElementById('modal-desc').textContent = b.desc + ' · Max: $' + b.amount + ' · ' + b.period;
+  const slider = document.getElementById('modal-slider');
+  slider.max = b.amount;
+  slider.value = b.used;
+  document.getElementById('modal-amount').textContent = '$' + b.used;
+  document.getElementById('overlay').classList.add('open');
+}
+
+document.getElementById('modal-slider').addEventListener('input', e => {
+  document.getElementById('modal-amount').textContent = '$' + e.target.value;
+});
+
+async function saveModal() {
+  const val = parseInt(document.getElementById('modal-slider').value);
+  const b = benefits.find(x => x.id === editingId);
+  b.used = val;
+  closeModal();
+  render();
+  await saveBenefit(editingId, val);
+}
+
+function closeModal() {
+  document.getElementById('overlay').classList.remove('open');
+  editingId = null;
+}
+
+document.getElementById('overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('overlay')) closeModal();
+});
+
+async function activatePerk(id) {
+  const p = perks.find(x => x.id === id);
+  p.activated = true;
+  renderPerks();
+  await savePerk(id, true);
+}
+
+// Init
+loadFromDB();
+</script>
+</body>
+</html>
