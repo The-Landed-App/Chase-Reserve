@@ -494,7 +494,7 @@
 </main>
 
 <!-- SPEND MODAL -->
-<div class="overlay" id="spend-overlay">
+<div class="overlay" id="spend-overlay" style="z-index:300;">
   <div class="modal">
     <div class="modal-name">🎯 Welcome Bonus Spend</div>
     <div class="modal-desc">Enter the total amount you've spent on the card so far. This tracks progress toward the $6,000 requirement for the 60,000 bonus points.</div>
@@ -731,25 +731,34 @@ function renderPerks() {
 
 // Spend modal
 function openSpendModal() {
+  const overlay = document.getElementById('spend-overlay');
   document.getElementById('spend-input').value = spendAmount || '';
-  document.getElementById('spend-overlay').classList.add('open');
+  overlay.style.display = 'flex';
+  overlay.classList.add('open');
   setTimeout(() => document.getElementById('spend-input').focus(), 50);
 }
 
+function closeSpendModal() {
+  const overlay = document.getElementById('spend-overlay');
+  overlay.classList.remove('open');
+  overlay.style.display = '';
+}
+
 async function saveSpendModal() {
-  const val = Math.min(6000, Math.max(0, parseInt(document.getElementById('spend-input').value) || 0));
+  const val = Math.max(0, parseInt(document.getElementById('spend-input').value) || 0);
   spendAmount = val;
   closeSpendModal();
   renderSpend();
   await saveSpend(val);
 }
 
-function closeSpendModal() {
-  document.getElementById('spend-overlay').classList.remove('open');
-}
-
 document.getElementById('spend-overlay').addEventListener('click', e => {
   if (e.target === document.getElementById('spend-overlay')) closeSpendModal();
+});
+
+document.getElementById('spend-overlay').addEventListener('keydown', e => {
+  if (e.key === 'Enter') saveSpendModal();
+  if (e.key === 'Escape') closeSpendModal();
 });
 
 // Modal
